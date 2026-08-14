@@ -1,0 +1,6 @@
+@Vcrm_HostAddress = http://localhost:5076
+
+GET {{Vcrm_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
