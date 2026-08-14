@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Vcrm;
 using Vcrm.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +14,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        $"Connection string 'DefaultConnection' is not configured for environment '{builder.Environment.EnvironmentName}'. " +
+        $"Connection string 'DefaultConnection' is not configured for environment '{AppSettings.EnvironmentName}'. " +
         "For Production, set it via Azure App Service Configuration / Key Vault, not in appsettings.json.");
 }
 
@@ -25,7 +26,7 @@ var app = builder.Build();
 // Dev/Qa/Stage run against local databases with no deployment pipeline, so apply
 // migrations automatically. Production migrations are applied as a controlled
 // release step instead, not automatically on app startup.
-if (!app.Environment.IsProduction())
+if (!AppSettings.IsProduction)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<VcrmDbContext>();
@@ -34,7 +35,7 @@ if (!app.Environment.IsProduction())
 
 // Configure the HTTP request pipeline.
 // OpenAPI/Swagger is exposed on every environment except Production.
-if (!app.Environment.IsProduction())
+if (!AppSettings.IsProduction)
 {
     app.MapOpenApi();
 }
