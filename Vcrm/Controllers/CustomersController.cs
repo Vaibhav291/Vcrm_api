@@ -6,7 +6,7 @@ using Vcrm.Models;
 namespace Vcrm.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("vcrm/[controller]")]
 public class CustomersController : ControllerBase
 {
     private readonly VcrmDbContext _context;
