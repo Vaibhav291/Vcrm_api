@@ -1,17 +1,14 @@
 name: Run SQL Scripts (Dev)
 
+# Manual/ad-hoc use only. Automatic runs on push to develop happen as the
+# migrate-db job inside develop_vcrm-api.yml, so DB scripts apply before
+# the app builds/deploys. This workflow exists for one-off manual runs.
 on:
-  push:
-    branches:
-      - develop
-    paths:
-      - 'Vcrm/SqlScripts/**'
-      - '.github/workflows/sql-scripts-dev.yml'
+  workflow_dispatch:
 
 env:
   MANIFEST_PATH: Vcrm/SqlScripts/db-dev-migration.json
   SCRIPTS_DIR: Vcrm/SqlScripts
-  workflow_dispatch:
 
 jobs:
   run-sql-scripts:
