@@ -1,8 +1,13 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.IdentityModel.Tokens;
 using Vcrm.Data;
 using Vcrm.Repositories;
 using Vcrm.Services;
+using Vcrm.Services.Auth;
+using Vcrm.Services.Email;
 
 namespace Vcrm;
 
@@ -42,6 +47,48 @@ public static class ServiceConfiguration
 
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ICustomerService, CustomerService>();
+
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuthService, AuthService>();
+
+        var smtpSection = configuration.GetSection("Smtp");
+        services.Configure<SmtpSettings>(smtpSection);
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
+
+        if (string.IsNullOrWhiteSpace(smtpSection["Host"]) || string.IsNullOrWhiteSpace(smtpSection["Username"]))
+        {
+            throw new InvalidOperationException(
+                $"Configuration 'Smtp:Host'/'Smtp:Username'/'Smtp:Password' is not fully configured for environment '{AppSettings.EnvironmentName}'. " +
+                "Set SMTP settings via user-secrets locally or Azure App Service Configuration / Key Vault in Production.");
+        }
+
+        var jwtSection = configuration.GetSection("Jwt");
+        services.Configure<JwtSettings>(jwtSection);
+
+        var signingKey = jwtSection["SigningKey"];
+        if (string.IsNullOrWhiteSpace(signingKey))
+        {
+            throw new InvalidOperationException(
+                $"Configuration 'Jwt:SigningKey' is not configured for environment '{AppSettings.EnvironmentName}'. " +
+                "For Production, set it via Azure App Service Configuration / Key Vault, not in appsettings.json.");
+        }
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSection["Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = jwtSection["Audience"],
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+                    ValidateLifetime = true,
+                };
+            });
+
+        services.AddAuthorization();
 
         return services;
     }

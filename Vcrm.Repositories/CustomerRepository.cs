@@ -23,10 +23,12 @@ public class CustomerRepository : ICustomerRepository
 
     public async Task<Customer?> GetByIdAsync(int id)
     {
-        return await _context.Customers
+        var results = await _context.Customers
             .FromSqlInterpolated($"EXEC dbo.GetCustomerById {id}")
             .AsNoTracking()
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        return results.FirstOrDefault();
     }
 
     public async Task<Customer> InsertAsync(Customer customer)
