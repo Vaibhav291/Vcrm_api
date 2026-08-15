@@ -4,10 +4,16 @@ namespace Vcrm.Models;
 
 public class Customer
 {
-    public int Id { get; set; }
+    public int CustomerId { get; set; }
 
-    [Required, MaxLength(100)]
-    public string Name { get; set; } = string.Empty;
+    [Required, MaxLength(50)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required, MaxLength(50)]
+    public string LastName { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    public string? CompanyName { get; set; }
 
     [Required, EmailAddress, MaxLength(150)]
     public string Email { get; set; } = string.Empty;
@@ -16,5 +22,16 @@ public class Customer
     public string? Phone { get; set; }
 
     [MaxLength(100)]
-    public string? Company { get; set; }
+    public string? Industry { get; set; }
+
+    [MaxLength(250)]
+    public string? Address { get; set; }
+
+    public int? AssignedToUserId { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+
+    public bool IsActive { get; set; } = true;
 }
