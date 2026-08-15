@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Vcrm.Data;
 
@@ -11,9 +12,11 @@ using Vcrm.Data;
 namespace Vcrm.Migrations
 {
     [DbContext(typeof(VcrmDbContext))]
-    partial class VcrmDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815075124_ExpandCustomerModel")]
+    partial class ExpandCustomerModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

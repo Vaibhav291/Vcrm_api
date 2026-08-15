@@ -41,20 +41,36 @@ public class CustomersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
+        customer.CreatedAt = DateTime.UtcNow;
+        customer.UpdatedAt = customer.CreatedAt;
+
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
+        return CreatedAtAction(nameof(GetCustomer), new { id = customer.CustomerId }, customer);
     }
 
     // PUT: api/customers/5
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateCustomer(int id, Customer customer)
     {
-        if (id != customer.Id)
+        if (id != customer.CustomerId)
         {
             return BadRequest();
         }
+
+        var createdAt = await _context.Customers
+            .Where(c => c.CustomerId == id)
+            .Select(c => (DateTime?)c.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (createdAt is null)
+        {
+            return NotFound();
+        }
+
+        customer.CreatedAt = createdAt.Value;
+        customer.UpdatedAt = DateTime.UtcNow;
 
         _context.Entry(customer).State = EntityState.Modified;
 
@@ -94,6 +110,6 @@ public class CustomersController : ControllerBase
 
     private async Task<bool> CustomerExists(int id)
     {
-        return await _context.Customers.AnyAsync(c => c.Id == id);
+        return await _context.Customers.AnyAsync(c => c.CustomerId == id);
     }
 }
