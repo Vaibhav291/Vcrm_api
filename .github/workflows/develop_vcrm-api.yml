@@ -111,3 +111,29 @@ jobs:
           app-name: 'Vcrm-api'
           slot-name: 'Production'
           package: .
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [migrate-db, build, deploy]
+    if: always()
+    steps:
+      - name: Send Cliq notification
+        shell: pwsh
+        env:
+          WEBHOOK_URL: ${{ secrets.CLIQ_WEBHOOK_URL }}
+          MIGRATE_RESULT: ${{ needs.migrate-db.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+        run: |
+          $status = if ($env:MIGRATE_RESULT -eq "success" -and $env:BUILD_RESULT -eq "success" -and $env:DEPLOY_RESULT -eq "success") {
+            "Success"
+          } else {
+            "Failure"
+          }
+
+          $deploymentTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd hh:mm:ss tt") + " UTC"
+
+          $message = "Application :- Vcrm Api`nDeployment Status : $status`nDeployment Time : $deploymentTime"
+
+          $body = @{ text = $message } | ConvertTo-Json
+          Invoke-RestMethod -Uri $env:WEBHOOK_URL -Method Post -Body $body -ContentType "application/json"
