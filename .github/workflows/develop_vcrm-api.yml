@@ -25,7 +25,26 @@ jobs:
           CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
         run: |
           Import-Module SqlServer
-          Invoke-Sqlcmd -ConnectionString $env:CONN -Query "IF OBJECT_ID(N'dbo.SchemaVersionHistory', N'U') IS NULL CREATE TABLE dbo.SchemaVersionHistory (ScriptName NVARCHAR(255) NOT NULL CONSTRAINT PK_SchemaVersionHistory PRIMARY KEY, AppliedAtUtc DATETIME2 NOT NULL);"
+
+          function Invoke-SqlWithRetry {
+            param(
+              [Parameter(Mandatory)][hashtable]$SqlcmdArgs,
+              [int]$MaxAttempts = 5,
+              [int]$DelaySeconds = 15
+            )
+            for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+              try {
+                return Invoke-Sqlcmd -ConnectionString "$env:CONN;Connect Timeout=90" @SqlcmdArgs
+              } catch {
+                if ($attempt -eq $MaxAttempts) { throw }
+                Write-Host "Attempt $attempt/$MaxAttempts failed (likely Azure SQL Serverless resuming from auto-pause): $_"
+                Write-Host "Retrying in $DelaySeconds seconds..."
+                Start-Sleep -Seconds $DelaySeconds
+              }
+            }
+          }
+
+          Invoke-SqlWithRetry -SqlcmdArgs @{ Query = "IF OBJECT_ID(N'dbo.SchemaVersionHistory', N'U') IS NULL CREATE TABLE dbo.SchemaVersionHistory (ScriptName NVARCHAR(255) NOT NULL CONSTRAINT PK_SchemaVersionHistory PRIMARY KEY, AppliedAtUtc DATETIME2 NOT NULL);" }
 
       - name: Run pending SQL scripts from manifest
         shell: pwsh
@@ -35,6 +54,24 @@ jobs:
           SCRIPTS_DIR: Vcrm/SqlScripts
         run: |
           Import-Module SqlServer
+
+          function Invoke-SqlWithRetry {
+            param(
+              [Parameter(Mandatory)][hashtable]$SqlcmdArgs,
+              [int]$MaxAttempts = 5,
+              [int]$DelaySeconds = 15
+            )
+            for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+              try {
+                return Invoke-Sqlcmd -ConnectionString "$env:CONN;Connect Timeout=90" @SqlcmdArgs
+              } catch {
+                if ($attempt -eq $MaxAttempts) { throw }
+                Write-Host "Attempt $attempt/$MaxAttempts failed (likely Azure SQL Serverless resuming from auto-pause): $_"
+                Write-Host "Retrying in $DelaySeconds seconds..."
+                Start-Sleep -Seconds $DelaySeconds
+              }
+            }
+          }
 
           $manifest = Get-Content -Path $env:MANIFEST_PATH -Raw | ConvertFrom-Json
 
@@ -46,12 +83,12 @@ jobs:
               exit 1
             }
 
-            $result = Invoke-Sqlcmd -ConnectionString $env:CONN -Query "SELECT COUNT(*) AS Cnt FROM dbo.SchemaVersionHistory WHERE ScriptName = '$name'"
+            $result = Invoke-SqlWithRetry -SqlcmdArgs @{ Query = "SELECT COUNT(*) AS Cnt FROM dbo.SchemaVersionHistory WHERE ScriptName = '$name'" }
 
             if ($result.Cnt -eq 0) {
               Write-Host "Applying $name"
-              Invoke-Sqlcmd -ConnectionString $env:CONN -InputFile $scriptPath
-              Invoke-Sqlcmd -ConnectionString $env:CONN -Query "INSERT INTO dbo.SchemaVersionHistory (ScriptName, AppliedAtUtc) VALUES ('$name', SYSUTCDATETIME());"
+              Invoke-SqlWithRetry -SqlcmdArgs @{ InputFile = $scriptPath }
+              Invoke-SqlWithRetry -SqlcmdArgs @{ Query = "INSERT INTO dbo.SchemaVersionHistory (ScriptName, AppliedAtUtc) VALUES ('$name', SYSUTCDATETIME());" }
               Write-Host "Applied $name"
             } else {
               Write-Host "Skipping $name (already applied)"
