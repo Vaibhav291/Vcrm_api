@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 env:
-  MANIFEST_PATH: Vcrm/SqlScripts/db-dev-migration.json
-  SCRIPTS_DIR: Vcrm/SqlScripts
+  MANIFEST_PATH: Vcrm.Repositories/SqlScripts/db-dev-migration.json
+  SCRIPTS_DIR: Vcrm.Repositories/SqlScripts
 
 jobs:
   run-sql-scripts:

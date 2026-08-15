@@ -77,7 +77,7 @@ public class AuthService : IAuthService
 
     public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
-        var user = await _repository.GetByUsernameAsync(request.Username);
+        var user = await _repository.GetByEmailAsync(request.Email);
         if (user is null)
         {
             return new LoginResult { Status = LoginStatus.InvalidCredentials };
