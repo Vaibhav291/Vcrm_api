@@ -1,40 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Vcrm;
-using Vcrm.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
-builder.Services.AddControllers();
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-const string UiCorsPolicy = "UiCorsPolicy";
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(UiCorsPolicy, policy =>
-    {
-        policy.WithOrigins(allowedOrigins)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
-});
-
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException(
-        $"Connection string 'DefaultConnection' is not configured for environment '{AppSettings.EnvironmentName}'. " +
-        "For Production, set it via Azure App Service Configuration / Key Vault, not in appsettings.json.");
-}
-
-builder.Services.AddDbContext<VcrmDbContext>(options =>
-    options.UseSqlServer(connectionString, sqlOptions => sqlOptions.EnableRetryOnFailure())
-        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
+builder.Services.AddVcrmServices(builder.Configuration);
 
 var app = builder.Build();
 
@@ -59,7 +28,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-app.UseCors(UiCorsPolicy);
+app.UseCors(ServiceConfiguration.UiCorsPolicy);
 
 app.UseAuthorization();
 

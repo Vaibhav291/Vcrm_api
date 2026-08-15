@@ -1,5 +1,5 @@
 {
   "files": [
-    "testdbscript.sql"
+    "0003_customer_repository_routines.sql"
   ]
 }

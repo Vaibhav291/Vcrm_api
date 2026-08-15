@@ -9,8 +9,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
     <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="7.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vcrm.Models\Vcrm.Models.csproj" />
+    <ProjectReference Include="..\Vcrm.Repositories\Vcrm.Repositories.csproj" />
+    <ProjectReference Include="..\Vcrm.Services\Vcrm.Services.csproj" />
   </ItemGroup>
 
 </Project>
