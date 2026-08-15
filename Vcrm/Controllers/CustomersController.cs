@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Vcrm.Data;
 using Vcrm.Models;
+using Vcrm.Services;
 
 namespace Vcrm.Controllers;
 
@@ -9,11 +8,13 @@ namespace Vcrm.Controllers;
 [Route("vcrm/[controller]")]
 public class CustomersController : ControllerBase
 {
-    private readonly VcrmDbContext _context;
+    private readonly ICustomerService _service;
+    private readonly ILogger<CustomersController> _logger;
 
-    public CustomersController(VcrmDbContext context)
+    public CustomersController(ICustomerService service, ILogger<CustomersController> logger)
     {
-        _context = context;
+        _service = service;
+        _logger = logger;
     }
 
     // GET: api/customers
@@ -22,16 +23,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var customers = await _context.Customers
-                .FromSqlRaw("SELECT * FROM dbo.GetAllCustomers()")
-                .AsNoTracking()
-                .ToListAsync();
-
-            return customers;
+            return Ok(await _service.GetCustomersAsync());
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred while processing the request: {ex.Message}");
+            _logger.LogError(ex, "An error occurred while retrieving customers.");
             return StatusCode(500, "Internal server error");
         }
     }
@@ -40,7 +36,7 @@ public class CustomersController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Customer>> GetCustomer(int id)
     {
-        var customer = await _context.Customers.FindAsync(id);
+        var customer = await _service.GetCustomerAsync(id);
 
         if (customer is null)
         {
@@ -56,18 +52,12 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            customer.CustomerId = 0;
-            customer.CreatedAt = DateTime.UtcNow;
-            customer.UpdatedAt = customer.CreatedAt;
-
-            _context.Customers.Add(customer);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetCustomer), new { id = customer.CustomerId }, customer);
+            var created = await _service.CreateCustomerAsync(customer);
+            return CreatedAtAction(nameof(GetCustomer), new { id = created.CustomerId }, created);
         }
         catch (Exception ex)
         {
-            Console.WriteLine("An error occurred while processing the request.",ex.Message);
+            _logger.LogError(ex, "An error occurred while creating a customer.");
             return StatusCode(500, "Internal server error");
         }
     }
@@ -81,57 +71,21 @@ public class CustomersController : ControllerBase
             return BadRequest();
         }
 
-        var createdAt = await _context.Customers
-            .Where(c => c.CustomerId == id)
-            .Select(c => (DateTime?)c.CreatedAt)
-            .FirstOrDefaultAsync();
-
-        if (createdAt is null)
-        {
-            return NotFound();
-        }
-
-        customer.CreatedAt = createdAt.Value;
-        customer.UpdatedAt = DateTime.UtcNow;
-
-        _context.Entry(customer).State = EntityState.Modified;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!await CustomerExists(id))
-            {
-                return NotFound();
-            }
-
-            throw;
-        }
-
-        return NoContent();
+        var updated = await _service.UpdateCustomerAsync(id, customer);
+        return updated ? NoContent() : NotFound();
     }
 
     // DELETE: api/customers/5
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteCustomer(int id)
     {
-        var customer = await _context.Customers.FindAsync(id);
+        var deleted = await _service.DeleteCustomerAsync(id);
 
-        if (customer is null)
+        if (!deleted)
         {
             return NotFound();
         }
 
-        _context.Customers.Remove(customer);
-        await _context.SaveChangesAsync();
-
         return NoContent();
-    }
-
-    private async Task<bool> CustomerExists(int id)
-    {
-        return await _context.Customers.AnyAsync(c => c.CustomerId == id);
     }
 }
