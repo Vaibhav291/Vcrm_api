@@ -50,8 +50,8 @@ jobs:
         shell: pwsh
         env:
           CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
-          MANIFEST_PATH: Vcrm/SqlScripts/db-dev-migration.json
-          SCRIPTS_DIR: Vcrm/SqlScripts
+          MANIFEST_PATH: Vcrm.Repositories/SqlScripts/db-dev-migration.json
+          SCRIPTS_DIR: Vcrm.Repositories/SqlScripts
         run: |
           Import-Module SqlServer
 
