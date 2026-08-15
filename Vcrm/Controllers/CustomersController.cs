@@ -20,7 +20,20 @@ public class CustomersController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
     {
-        return await _context.Customers.AsNoTracking().ToListAsync();
+        try
+        {
+            var customers = await _context.Customers
+                .FromSqlRaw("SELECT * FROM dbo.GetAllCustomers()")
+                .AsNoTracking()
+                .ToListAsync();
+
+            return customers;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred while processing the request: {ex.Message}");
+            return StatusCode(500, "Internal server error");
+        }
     }
 
     // GET: api/customers/5
@@ -41,13 +54,22 @@ public class CustomersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
     {
-        customer.CreatedAt = DateTime.UtcNow;
-        customer.UpdatedAt = customer.CreatedAt;
+        try
+        {
+            customer.CustomerId = 0;
+            customer.CreatedAt = DateTime.UtcNow;
+            customer.UpdatedAt = customer.CreatedAt;
 
-        _context.Customers.Add(customer);
-        await _context.SaveChangesAsync();
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetCustomer), new { id = customer.CustomerId }, customer);
+            return CreatedAtAction(nameof(GetCustomer), new { id = customer.CustomerId }, customer);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("An error occurred while processing the request.",ex.Message);
+            return StatusCode(500, "Internal server error");
+        }
     }
 
     // PUT: api/customers/5

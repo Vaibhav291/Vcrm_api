@@ -12,6 +12,18 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+const string UiCorsPolicy = "UiCorsPolicy";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(UiCorsPolicy, policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -40,7 +52,14 @@ if (!AppSettings.IsProduction)
     });
 }
 
-app.UseHttpsRedirection();
+// Skip HTTPS redirection in Development so the local Vite dev server (http)
+// can call the API without needing the .NET dev cert trusted in the browser.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors(UiCorsPolicy);
 
 app.UseAuthorization();
 
