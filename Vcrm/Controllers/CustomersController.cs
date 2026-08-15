@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vcrm.Models;
 using Vcrm.Services;
@@ -6,6 +7,7 @@ namespace Vcrm.Controllers;
 
 [ApiController]
 [Route("vcrm/[controller]")]
+[Authorize]
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _service;

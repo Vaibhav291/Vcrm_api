@@ -30,6 +30,7 @@ if (!app.Environment.IsDevelopment())
 
 app.UseCors(ServiceConfiguration.UiCorsPolicy);
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

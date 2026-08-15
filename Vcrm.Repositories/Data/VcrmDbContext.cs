@@ -10,4 +10,6 @@ public class VcrmDbContext : DbContext
     }
 
     public DbSet<Customer> Customers => Set<Customer>();
+
+    public DbSet<User> Users => Set<User>();
 }

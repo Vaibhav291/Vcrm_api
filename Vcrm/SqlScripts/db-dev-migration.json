@@ -1,5 +1,7 @@
 {
   "files": [
-    "0003_customer_repository_routines.sql"
+    "0003_customer_repository_routines.sql",
+    "0004_user_repository_routines.sql",
+    "0005_user_email_verification.sql"
   ]
 }
