@@ -38,11 +38,11 @@ if (!AppSettings.IsProduction)
 // OpenAPI/Swagger is exposed on every environment except Production.
 if (!AppSettings.IsProduction)
 {
-    app.MapOpenApi();
+    app.MapOpenApi("/vcrm/openapi/{documentName}.json");
     app.UseSwaggerUI(options =>
     {
-        options.SwaggerEndpoint("/openapi/v1.json", "Vcrm API v1");
-        options.RoutePrefix = "swagger";
+        options.SwaggerEndpoint("/vcrm/openapi/v1.json", "Vcrm API v1");
+        options.RoutePrefix = "vcrm/swagger";
     });
 }
 
