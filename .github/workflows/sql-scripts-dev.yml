@@ -1,0 +1,51 @@
+name: Run SQL Scripts (Dev)
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'Vcrm/SqlScripts/**'
+      - '.github/workflows/sql-scripts-dev.yml'
+  workflow_dispatch:
+
+jobs:
+  run-sql-scripts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SqlServer PowerShell module
+        shell: pwsh
+        run: Install-Module -Name SqlServer -Force -AllowClobber -Scope CurrentUser -MinimumVersion 22.2.0
+
+      - name: Ensure schema version history table exists
+        shell: pwsh
+        env:
+          CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
+        run: |
+          Import-Module SqlServer
+          Invoke-Sqlcmd -ConnectionString $env:CONN -Query "IF OBJECT_ID(N'dbo.SchemaVersionHistory', N'U') IS NULL CREATE TABLE dbo.SchemaVersionHistory (ScriptName NVARCHAR(255) NOT NULL CONSTRAINT PK_SchemaVersionHistory PRIMARY KEY, AppliedAtUtc DATETIME2 NOT NULL);"
+
+      - name: Run pending SQL scripts in order
+        shell: pwsh
+        env:
+          CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
+        run: |
+          Import-Module SqlServer
+          $files = Get-ChildItem -Path "Vcrm/SqlScripts" -Filter "*.sql" | Sort-Object Name
+
+          foreach ($file in $files) {
+            $name = $file.Name
+            $result = Invoke-Sqlcmd -ConnectionString $env:CONN -Query "SELECT COUNT(*) AS Cnt FROM dbo.SchemaVersionHistory WHERE ScriptName = '$name'"
+
+            if ($result.Cnt -eq 0) {
+              Write-Host "Applying $name"
+              Invoke-Sqlcmd -ConnectionString $env:CONN -InputFile $file.FullName
+              Invoke-Sqlcmd -ConnectionString $env:CONN -Query "INSERT INTO dbo.SchemaVersionHistory (ScriptName, AppliedAtUtc) VALUES ('$name', SYSUTCDATETIME());"
+              Write-Host "Applied $name"
+            } else {
+              Write-Host "Skipping $name (already applied)"
+            }
+          }
