@@ -1,0 +1,59 @@
+name: Run SQL Scripts (Dev)
+
+# Manual/ad-hoc use only. Automatic runs on push to develop happen as the
+# migrate-db job inside develop_vcrm-api.yml, so DB scripts apply before
+# the app builds/deploys. This workflow exists for one-off manual runs.
+on:
+  workflow_dispatch:
+
+env:
+  MANIFEST_PATH: Vcrm/SqlScripts/db-dev-migration.json
+  SCRIPTS_DIR: Vcrm/SqlScripts
+
+jobs:
+  run-sql-scripts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SqlServer PowerShell module
+        shell: pwsh
+        run: Install-Module -Name SqlServer -Force -AllowClobber -Scope CurrentUser -MinimumVersion 22.2.0
+
+      - name: Ensure schema version history table exists
+        shell: pwsh
+        env:
+          CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
+        run: |
+          Import-Module SqlServer
+          Invoke-Sqlcmd -ConnectionString $env:CONN -Query "IF OBJECT_ID(N'dbo.SchemaVersionHistory', N'U') IS NULL CREATE TABLE dbo.SchemaVersionHistory (ScriptName NVARCHAR(255) NOT NULL CONSTRAINT PK_SchemaVersionHistory PRIMARY KEY, AppliedAtUtc DATETIME2 NOT NULL);"
+
+      - name: Run pending SQL scripts from manifest
+        shell: pwsh
+        env:
+          CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
+        run: |
+          Import-Module SqlServer
+
+          $manifest = Get-Content -Path $env:MANIFEST_PATH -Raw | ConvertFrom-Json
+
+          foreach ($name in $manifest.files) {
+            $scriptPath = Join-Path $env:SCRIPTS_DIR $name
+
+            if (-not (Test-Path $scriptPath)) {
+              Write-Error "Manifest references '$name' but no such file exists at $scriptPath"
+              exit 1
+            }
+
+            $result = Invoke-Sqlcmd -ConnectionString $env:CONN -Query "SELECT COUNT(*) AS Cnt FROM dbo.SchemaVersionHistory WHERE ScriptName = '$name'"
+
+            if ($result.Cnt -eq 0) {
+              Write-Host "Applying $name"
+              Invoke-Sqlcmd -ConnectionString $env:CONN -InputFile $scriptPath
+              Invoke-Sqlcmd -ConnectionString $env:CONN -Query "INSERT INTO dbo.SchemaVersionHistory (ScriptName, AppliedAtUtc) VALUES ('$name', SYSUTCDATETIME());"
+              Write-Host "Applied $name"
+            } else {
+              Write-Host "Skipping $name (already applied)"
+            }
+          }

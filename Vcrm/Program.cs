@@ -26,15 +26,7 @@ builder.Services.AddDbContext<VcrmDbContext>(options =>
 
 var app = builder.Build();
 
-// Dev/Qa/Stage run against local databases with no deployment pipeline, so apply
-// migrations automatically. Production migrations are applied as a controlled
-// release step instead, not automatically on app startup.
-if (!AppSettings.IsProduction)
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<VcrmDbContext>();
-    db.Database.Migrate();
-}
+// Migrations are applied by a dedicated CI/CD pipeline, not on app startup.
 
 // Configure the HTTP request pipeline.
 // OpenAPI/Swagger is exposed on every environment except Production.
