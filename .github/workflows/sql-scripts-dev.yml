@@ -7,6 +7,10 @@ on:
     paths:
       - 'Vcrm/SqlScripts/**'
       - '.github/workflows/sql-scripts-dev.yml'
+
+env:
+  MANIFEST_PATH: Vcrm/SqlScripts/db-dev-migration.json
+  SCRIPTS_DIR: Vcrm/SqlScripts
   workflow_dispatch:
 
 jobs:
@@ -28,21 +32,28 @@ jobs:
           Import-Module SqlServer
           Invoke-Sqlcmd -ConnectionString $env:CONN -Query "IF OBJECT_ID(N'dbo.SchemaVersionHistory', N'U') IS NULL CREATE TABLE dbo.SchemaVersionHistory (ScriptName NVARCHAR(255) NOT NULL CONSTRAINT PK_SchemaVersionHistory PRIMARY KEY, AppliedAtUtc DATETIME2 NOT NULL);"
 
-      - name: Run pending SQL scripts in order
+      - name: Run pending SQL scripts from manifest
         shell: pwsh
         env:
           CONN: ${{ secrets.DEV_DB_CONNECTION_STRING }}
         run: |
           Import-Module SqlServer
-          $files = Get-ChildItem -Path "Vcrm/SqlScripts" -Filter "*.sql" | Sort-Object Name
 
-          foreach ($file in $files) {
-            $name = $file.Name
+          $manifest = Get-Content -Path $env:MANIFEST_PATH -Raw | ConvertFrom-Json
+
+          foreach ($name in $manifest.files) {
+            $scriptPath = Join-Path $env:SCRIPTS_DIR $name
+
+            if (-not (Test-Path $scriptPath)) {
+              Write-Error "Manifest references '$name' but no such file exists at $scriptPath"
+              exit 1
+            }
+
             $result = Invoke-Sqlcmd -ConnectionString $env:CONN -Query "SELECT COUNT(*) AS Cnt FROM dbo.SchemaVersionHistory WHERE ScriptName = '$name'"
 
             if ($result.Cnt -eq 0) {
               Write-Host "Applying $name"
-              Invoke-Sqlcmd -ConnectionString $env:CONN -InputFile $file.FullName
+              Invoke-Sqlcmd -ConnectionString $env:CONN -InputFile $scriptPath
               Invoke-Sqlcmd -ConnectionString $env:CONN -Query "INSERT INTO dbo.SchemaVersionHistory (ScriptName, AppliedAtUtc) VALUES ('$name', SYSUTCDATETIME());"
               Write-Host "Applied $name"
             } else {

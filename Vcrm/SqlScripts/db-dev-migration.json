@@ -1,0 +1,6 @@
+{
+  "files": [
+    "0001_baseline_schema.sql",
+    "0002_pipeline_smoke_test.sql"
+  ]
+}
