@@ -3,7 +3,7 @@ using Vcrm;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddVcrmServices(builder.Configuration);
+builder.AddVcrmServices();
 
 var app = builder.Build();
 

@@ -1,4 +1,5 @@
 using System.Text;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -15,8 +16,23 @@ public static class ServiceConfiguration
 {
     public const string UiCorsPolicy = "UiCorsPolicy";
 
-    public static IServiceCollection AddVcrmServices(this IServiceCollection services, IConfiguration configuration)
+    public static WebApplicationBuilder AddVcrmServices(this WebApplicationBuilder builder)
     {
+        var configuration = builder.Configuration;
+        var services = builder.Services;
+
+        // In Azure, AZURE_KEY_VAULT_NAME is set as an App Service setting; locally it's absent,
+        // so config falls back to user-secrets/appsettings as before.
+        var keyVaultName = configuration["AZURE_KEY_VAULT_NAME"];
+        if (!string.IsNullOrWhiteSpace(keyVaultName))
+        {
+            builder.Configuration.AddAzureKeyVault(
+                new Uri($"https://{keyVaultName}.vault.azure.net/"),
+                new DefaultAzureCredential());
+        }
+
+        services.AddApplicationInsightsTelemetry();
+
         services.AddControllers();
 
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -90,6 +106,6 @@ public static class ServiceConfiguration
 
         services.AddAuthorization();
 
-        return services;
+        return builder;
     }
 }
