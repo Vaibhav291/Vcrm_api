@@ -5,10 +5,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Vcrm.Data;
+using Vcrm.ExceptionHandling;
 using Vcrm.Repositories;
 using Vcrm.Services;
 using Vcrm.Services.Auth;
 using Vcrm.Services.Email;
+using Vcrm.Services.Logging;
 
 namespace Vcrm;
 
@@ -32,6 +34,23 @@ public static class ServiceConfiguration
         }
 
         services.AddApplicationInsightsTelemetry();
+
+        // Always registered so unhandled exceptions get a consistent ProblemDetails response;
+        // the Vcrm_Messaging publish step below is layered on top only when configured.
+        services.AddProblemDetails();
+
+        var centralLoggingBaseUrl = configuration["CentralLogging:BaseUrl"];
+        var centralLoggingApiKey = configuration["CentralLogging:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(centralLoggingBaseUrl) && !string.IsNullOrWhiteSpace(centralLoggingApiKey))
+        {
+            services.AddHttpClient<ICentralLogPublisher, HttpCentralLogPublisher>(client =>
+            {
+                client.BaseAddress = new Uri(centralLoggingBaseUrl);
+                client.DefaultRequestHeaders.Add("X-Api-Key", centralLoggingApiKey);
+            });
+
+            services.AddExceptionHandler<CentralLoggingExceptionHandler>();
+        }
 
         services.AddControllers();
 
