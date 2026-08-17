@@ -9,6 +9,8 @@ var app = builder.Build();
 
 // Migrations are applied by a dedicated CI/CD pipeline, not on app startup.
 
+app.UseExceptionHandler();
+
 // Configure the HTTP request pipeline.
 // OpenAPI/Swagger is exposed on every environment except Production.
 if (!AppSettings.IsProduction)
